@@ -1,0 +1,97 @@
+1) TO CREATE A FUNCTION WITH TABLE VARIABLES
+alter function fn_GetCountOfCustomersPurchasingProduct(@productid varchar(10))
+returns integer
+as begin
+declare @count int
+select @count= count(customer_id) from Tbl_Orders where PRODUCT_ID=@productid
+return (@count)
+end
+
+select dbo.fn_GetCountOfCustomersPurchasingProduct('product_09')
+
+THEREFORE IT IS POSSIBLE TO HAVE TABLE VARIABLES IN A FUNCTION
+
+2) CALLING A STORE PROCEDURE WITHIN A FUNCTION
+
+ALTER PROC SP_SAMPLE(@COUNT INT OUTPUT)
+AS BEGIN
+SELECT @COUNT=COUNT(CUSTOMER_ID) FROM Tbl_Customer 
+END
+
+DECLARE @TOTALCOUNT INT
+EXEC SP_SAMPLE @TOTALCOUNT OUTPUT
+PRINT @TOTALCOUNT
+
+ALTER FUNCTION FN_SAMPLE()
+RETURNS INT 
+AS  BEGIN
+declare @count int
+SET @count= DBO.SP_SAMPLE
+return (@count)
+END
+SELECT DBO.FN_SAMPLE()
+
+WE WILL BE GETTING ERROR. THEREFORE IT IS NOT POSSIBLE TO CALL A STORE PROCEDURE IN A FUNCTION
+
+3)CALLING A FUNCTION WITHIN A STORE PROCEDURE
+
+CREATE FUNCTION FN_SAMPLE2()
+RETURNS TABLE
+AS 
+RETURN (SELECT * FROM Tbl_Customer)
+
+SELECT * FROM FN_SAMPLE2()
+
+CREATE PROC SP_SAMPLE2
+AS BEGIN
+SELECT CUSTOMER_ID, CUSTOMER_NAME, PHONE_NUMBER FROM  FN_SAMPLE2()
+END
+
+--THEREFORE IT IS POSSIBLE TO CALL A FUNCTION INSIDE A STORE PROCEDURE
+
+4) CALLING A STORE PROCEDURE INSIDE  A TRIGGER
+
+ALTER trigger tr_tbl_customer_insert
+on tbl_customer
+for insert 
+as
+EXEC SP_SAMPLE2
+
+INSERT INTO Tbl_Customer VALUES ('USER_23', 'CHAITRA PRABHU', 'chaitra@gmail.com', 9876543210,'F', 'MANNAGUDDA', 'MANGALORE',575003, 'KARNATAKA', 'INDIA')
+
+SELECT * FROM Tbl_Customer
+
+ 5) CREATING INSTEAD OF TRIGGER FOR TABLES
+create trigger tr_sample
+on employee
+instead of insert
+as
+begin
+insert into employee (empid, ename, job, mgr_code, doj, salary, commission, deptid)
+select empid, ename, job, mgr_code, doj, salary, commission, deptid
+from inserted
+end 
+
+insert into employee values (1234, 'chaitra', 'developer', 4567, '2023-02-03', 35000, 0, 20)
+
+
+
+
+6) INNER JOIN AND CROSS APPLY OPERATOR
+select c.*, customer_name 
+from Tbl_Cart c inner join FN_SAMPLE2('user_12') f on c.CUSTOMER_ID = f.CUSTOMER_ID
+
+
+select * from tbl_cart c 
+cross apply 
+( select customer_name from FN_SAMPLE2('user_12') f where c.CUSTOMER_ID = f.CUSTOMER_ID) T
+
+
+7) LEFT JOIN AND OUTER APPLY OPERATOR
+select c.*, customer_name 
+from Tbl_Cart c left join FN_SAMPLE2('user_12') f on c.CUSTOMER_ID = f.CUSTOMER_ID
+
+
+select * from tbl_cart c 
+outer apply 
+( select customer_name from FN_SAMPLE2('user_12') f where c.CUSTOMER_ID = f.CUSTOMER_ID) T
